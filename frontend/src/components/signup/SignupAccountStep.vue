@@ -148,7 +148,12 @@ export default {
   },
   computed: {
     allAgreements() {
-      return this.form.termsAccepted && this.form.privacyAccepted && this.form.marketingAccepted
+      return (
+        this.form.termsAccepted &&
+        this.form.privacyAccepted &&
+        this.form.ageConfirmed &&
+        this.form.marketingAccepted
+      )
     },
     canContinue() {
       return (
@@ -192,6 +197,7 @@ export default {
     toggleAll(checked) {
       this.updateField('termsAccepted', checked)
       this.updateField('privacyAccepted', checked)
+      this.updateField('ageConfirmed', checked)
       this.updateField('marketingAccepted', checked)
     },
     requestNext() {
