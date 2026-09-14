@@ -72,9 +72,6 @@
       </button>
     </div>
 
-    <p v-if="signupState === 'error'" class="submit-error" role="alert">
-      가입 시연에 실패했습니다. 입력 상태를 확인하고 다시 시도해 주세요.
-    </p>
     <p class="demo-hint">화면 시연용 · 실제 정보는 저장되지 않습니다.</p>
   </form>
 </template>

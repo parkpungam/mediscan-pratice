@@ -255,8 +255,7 @@ select:focus-visible {
   line-height: 1.35;
 }
 
-.field-message.error,
-.submit-error {
+.field-message.error {
   color: var(--error);
 }
 
@@ -364,7 +363,6 @@ select:focus-visible {
 
 .login-copy,
 .demo-hint,
-.submit-error,
 .demo-result {
   text-align: center;
 }
@@ -390,7 +388,6 @@ select:focus-visible {
   font-size: 12px;
 }
 
-.submit-error,
 .demo-result {
   margin: 12px 0 0;
   font-size: 12px;

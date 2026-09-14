@@ -20,6 +20,5 @@ export const DEMO_VALUES = {
   duplicateEmail: 'used@example.com',
   lookupErrorEmail: 'error@example.com',
   duplicateNickname: '사용중닉네임',
-  lookupErrorNickname: '조회실패',
-  signupErrorNickname: '가입실패'
+  lookupErrorNickname: '조회실패'
 }

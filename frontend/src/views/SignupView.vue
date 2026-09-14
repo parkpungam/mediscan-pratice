@@ -55,7 +55,7 @@
       <section class="demo-guide" aria-label="시연 상태 안내">
         <strong>데모 상태 확인</strong>
         <span>이메일: {{ demoValues.duplicateEmail }}(중복), {{ demoValues.lookupErrorEmail }}(조회 실패)</span>
-        <span>닉네임: {{ demoValues.duplicateNickname }}(중복), {{ demoValues.lookupErrorNickname }}(조회 실패), {{ demoValues.signupErrorNickname }}(가입 실패)</span>
+        <span>닉네임: {{ demoValues.duplicateNickname }}(중복), {{ demoValues.lookupErrorNickname }}(조회 실패)</span>
       </section>
     </section>
   </main>
@@ -151,12 +151,6 @@ export default {
     async submitSignup() {
       this.signupState = 'loading'
       await wait(750)
-
-      if (this.form.nickname === DEMO_VALUES.signupErrorNickname) {
-        this.signupState = 'error'
-        return
-      }
-
       this.signupState = 'success'
       this.currentStep = 3
     },

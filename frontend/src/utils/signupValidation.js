@@ -4,12 +4,13 @@ const HANGUL_PATTERN = /[가-힣]/
 const NUMBER_ONLY_PATTERN = /^\d+$/
 
 export function isValidEmail(value) {
-  return EMAIL_PATTERN.test(value)
+  return value.length <= 254 && EMAIL_PATTERN.test(value)
 }
 
 export function isValidPassword(value) {
   return (
     value.length >= 8 &&
+    value.length <= 64 &&
     /[A-Za-z]/.test(value) &&
     /\d/.test(value) &&
     /[^A-Za-z\d\s]/.test(value) &&

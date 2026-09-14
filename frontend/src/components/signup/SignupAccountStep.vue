@@ -8,11 +8,13 @@
         id="signup-email"
         type="email"
         autocomplete="email"
+        maxlength="254"
         :value="form.email"
         placeholder="name@example.com"
         :aria-invalid="Boolean(emailMessage)"
         aria-describedby="email-message"
         @input="updateField('email', $event.target.value)"
+        @blur="normalizeEmail"
       />
       <p id="email-message" class="field-message" :class="emailMessageClass" aria-live="polite">
         {{ emailMessage }}
@@ -26,8 +28,9 @@
           id="signup-password"
           :type="showPassword ? 'text' : 'password'"
           autocomplete="new-password"
+          maxlength="64"
           :value="form.password"
-          placeholder="영문·숫자·특수문자 포함 8자 이상"
+          placeholder="영문·숫자·특수문자 포함 8~64자"
           :aria-invalid="Boolean(passwordMessage)"
           aria-describedby="password-message"
           @input="updateField('password', $event.target.value)"
@@ -51,6 +54,7 @@
           id="signup-password-confirm"
           :type="showPasswordConfirm ? 'text' : 'password'"
           autocomplete="new-password"
+          maxlength="64"
           :value="form.passwordConfirm"
           :aria-invalid="Boolean(passwordConfirmMessage)"
           aria-describedby="password-confirm-message"
@@ -179,7 +183,7 @@ export default {
     },
     passwordMessage() {
       if (this.form.password && !isValidPassword(this.form.password)) {
-        return '영문·숫자·특수문자를 포함해 8자 이상 입력해 주세요.'
+        return '영문·숫자·특수문자를 포함해 8~64자로 입력해 주세요.'
       }
       return ''
     },
@@ -193,6 +197,10 @@ export default {
   methods: {
     updateField(field, value) {
       this.$emit('update-field', field, value)
+    },
+    normalizeEmail() {
+      const trimmedEmail = this.form.email.trim()
+      if (trimmedEmail !== this.form.email) this.updateField('email', trimmedEmail)
     },
     toggleAll(checked) {
       this.updateField('termsAccepted', checked)
