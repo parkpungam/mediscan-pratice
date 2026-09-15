@@ -31,7 +31,7 @@
 
     <div class="form-field">
       <label for="signup-major">전공</label>
-      <select id="signup-major" :value="form.major" @change="updateField('major', $event.target.value)">
+      <select id="signup-major" v-model="majorValue" :class="{ 'is-placeholder': !form.major }">
         <option value="" disabled>전공을 선택하세요</option>
         <option v-for="major in majorOptions" :key="major" :value="major">{{ major }}</option>
       </select>
@@ -48,7 +48,7 @@
 
     <div class="form-field">
       <label for="signup-source">가입 경로 <span>(선택)</span></label>
-      <select id="signup-source" :value="form.signupSource" @change="updateField('signupSource', $event.target.value)">
+      <select id="signup-source" v-model="signupSourceValue" :class="{ 'is-placeholder': !form.signupSource }">
         <option value="">메디스캔노트를 알게 된 경로를 선택해 주세요</option>
         <option v-for="source in sourceOptions" :key="source" :value="source">{{ source }}</option>
       </select>
@@ -106,6 +106,22 @@ export default {
     }
   },
   computed: {
+    majorValue: {
+      get() {
+        return this.form.major
+      },
+      set(value) {
+        this.updateField('major', value)
+      }
+    },
+    signupSourceValue: {
+      get() {
+        return this.form.signupSource
+      },
+      set(value) {
+        this.updateField('signupSource', value)
+      }
+    },
     nicknameError() {
       return getNicknameError(this.form.nickname)
     },

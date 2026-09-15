@@ -13,8 +13,7 @@
         placeholder="name@example.com"
         :aria-invalid="Boolean(emailMessage)"
         aria-describedby="email-message"
-        @input="updateField('email', $event.target.value)"
-        @blur="normalizeEmail"
+        @input="updateEmail"
       />
       <p id="email-message" class="field-message" :class="emailMessageClass" aria-live="polite">
         {{ emailMessage }}
@@ -198,9 +197,10 @@ export default {
     updateField(field, value) {
       this.$emit('update-field', field, value)
     },
-    normalizeEmail() {
-      const trimmedEmail = this.form.email.trim()
-      if (trimmedEmail !== this.form.email) this.updateField('email', trimmedEmail)
+    updateEmail(event) {
+      const emailWithoutSpaces = event.target.value.replace(/\s/g, '')
+      event.target.value = emailWithoutSpaces
+      this.updateField('email', emailWithoutSpaces)
     },
     toggleAll(checked) {
       this.updateField('termsAccepted', checked)

@@ -193,6 +193,19 @@ select:focus-visible {
   color: #7f919b;
 }
 
+.form-field select.is-placeholder {
+  color: #9aaab2;
+}
+
+.form-field select option {
+  background: #152126;
+  color: #f3f7f8;
+}
+
+.form-field select option:disabled {
+  color: #9aaab2;
+}
+
 .form-field input:hover,
 .form-field select:hover,
 .form-field input:focus,
