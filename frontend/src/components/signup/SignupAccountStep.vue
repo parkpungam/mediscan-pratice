@@ -43,7 +43,7 @@
           {{ showPassword ? '숨김' : '보기' }}
         </button>
       </div>
-      <p id="password-message" class="field-message error">{{ passwordMessage }}</p>
+      <p id="password-message" class="field-message error">{{ passwordMessage }}</p><ul class="password-checklist" aria-label="비밀번호 조건"><li v-for="item in passwordChecklist" :key="item.label" :class="{ passed: item.passed }">{{ item.passed ? '✓' : '○' }} {{ item.label }}</li></ul>
     </div>
 
     <div class="form-field">
@@ -123,7 +123,7 @@
 
 <script>
 import SignupProgress from './SignupProgress.vue'
-import { isValidEmail, isValidPassword } from '../../utils/signupValidation'
+import { getPasswordChecklist, isValidEmail, isValidPassword } from '../../utils/signupValidation'
 
 export default {
   name: 'SignupAccountStep',
@@ -180,6 +180,7 @@ export default {
     emailMessageClass() {
       return this.emailMessage ? 'error' : ''
     },
+    passwordChecklist() { return getPasswordChecklist(this.form.password) },
     passwordMessage() {
       if (this.form.password && !isValidPassword(this.form.password)) {
         return '영문·숫자·특수문자를 포함해 8~64자로 입력해 주세요.'

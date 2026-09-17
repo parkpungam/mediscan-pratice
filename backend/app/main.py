@@ -1,4 +1,5 @@
 import os,re,secrets,hashlib,uuid,time,asyncpg,bcrypt
+from datetime import timedelta
 from contextlib import asynccontextmanager
 from asyncpg.exceptions import UniqueViolationError
 from dotenv import load_dotenv
@@ -7,6 +8,7 @@ from fastapi import FastAPI,Request,Response,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 pool=None; attempts={}; WINDOW=900; _lifespan_context=None
+SHORT_SESSION_SECONDS=3*60*60; LONG_SESSION_SECONDS=30*24*60*60; ABSOLUTE_SESSION_SECONDS=30*24*60*60; RESEND_COOLDOWN_SECONDS=300
 ENV=os.getenv('ENVIRONMENT','development')
 _DUMMY_PASSWORD_HASH=bcrypt.hashpw(b'x',bcrypt.gensalt(rounds=12))
 @asynccontextmanager
@@ -25,6 +27,8 @@ email_re=re.compile(r'^[^\s@]+@[^\s@]+\.[^\s@]+$'); symbols=r'''!@#$%^&*()\-_=+\
 def norm(v): return re.sub(r'\s','',v).lower()
 def sha(v): return hashlib.sha256(v.encode()).hexdigest()
 def newtoken(): return secrets.token_urlsafe(32)
+def session_idle_seconds(keep_signed_in): return LONG_SESSION_SECONDS if keep_signed_in else SHORT_SESSION_SECONDS
+def session_expiry(now,created_at,keep_signed_in): return min(now+timedelta(seconds=session_idle_seconds(keep_signed_in)),created_at+timedelta(seconds=ABSOLUTE_SESSION_SECONDS))
 def password_ok(v): return 8<=len(v)<=64 and not re.search(r'\s',v) and bool(re.search('[A-Za-z]',v) and re.search(r'\d',v) and re.search('['+symbols+']',v))
 def password_matches(password,password_hash=None): return bcrypt.checkpw(password.encode(),password_hash.encode() if password_hash else _DUMMY_PASSWORD_HASH)
 def limited(k,n):
@@ -77,8 +81,16 @@ async def resend(b:Email):
  async with pool.acquire() as c:
   u=await c.fetchrow('select id,email_verified_at from users where email=$1',norm(b.email))
   if not u or u['email_verified_at']: return {'status':'verification_pending'}
-  await c.execute('update email_verifications set used_at=now() where user_id=$1 and used_at is null',u['id']); t=newtoken(); await c.execute("insert into email_verifications(id,user_id,token_hash,expires_at) values($1,$2,$3,now()+interval '24 hours')",uuid.uuid4(),u['id'],sha(t)); return {'status':'verification_pending',**({'developmentToken':t} if DEV else {})}
-class Login(BaseModel): email:str; password:str
+  last_sent=await c.fetchval('select max(created_at) from email_verifications where user_id=$1',u['id'])
+  if last_sent:
+   elapsed=await c.fetchval('select extract(epoch from now()-$1::timestamptz)',last_sent)
+   if elapsed < RESEND_COOLDOWN_SECONDS:
+    retry=max(1,int(RESEND_COOLDOWN_SECONDS-elapsed)); return error('RESEND_COOLDOWN',429,'인증 메일은 5분 후에 다시 요청할 수 있습니다.',{'Retry-After':str(retry)})
+  await c.execute('update email_verifications set used_at=now() where user_id=$1 and used_at is null',u['id'])
+  t=newtoken()
+  await c.execute("insert into email_verifications(id,user_id,token_hash,expires_at) values($1,$2,$3,now()+interval '24 hours')",uuid.uuid4(),u['id'],sha(t))
+  return {'status':'verification_pending',**({'developmentToken':t} if DEV else {})}
+class Login(BaseModel): email:str; password:str; keepSignedIn:bool=False
 @app.post('/v1/auth/login')
 async def login(b:Login,request:Request,response:Response):
  e=norm(b.email); ip=request.client.host; be,retry1=limited('e:'+e,10); bi,retry2=limited('i:'+ip,20)
@@ -86,11 +98,15 @@ async def login(b:Login,request:Request,response:Response):
  async with pool.acquire() as c:
   row=await c.fetchrow('select u.id,u.email,u.password_hash,u.email_verified_at,p.nickname from users u join user_profiles p on p.user_id=u.id where u.email=$1',e)
   if not password_matches(b.password,row['password_hash'] if row else None): record('e:'+e);record('i:'+ip);return error('INVALID_CREDENTIALS',401,'이메일 또는 비밀번호가 올바르지 않습니다.')
-  attempts.pop('e:'+e,None);attempts.pop('i:'+ip,None);t=newtoken();await c.execute("insert into auth_sessions(id,user_id,token_hash,expires_at) values($1,$2,$3,now()+interval '24 hours')",uuid.uuid4(),row['id'],sha(t));response.set_cookie('msn_session',t,httponly=True,samesite='lax',secure=ENV!='development',max_age=86400);return {'user':{'email':row['email'],'nickname':row['nickname'],'emailVerified':bool(row['email_verified_at'])}}
+  attempts.pop('e:'+e,None);attempts.pop('i:'+ip,None);t=newtoken();idle=session_idle_seconds(b.keepSignedIn);await c.execute("insert into auth_sessions(id,user_id,token_hash,expires_at,keep_signed_in) values($1,$2,$3,now()+($4 * interval '1 second'),$5)",uuid.uuid4(),row['id'],sha(t),idle,b.keepSignedIn);response.set_cookie('msn_session',t,httponly=True,samesite='lax',secure=ENV!='development',max_age=idle);return {'user':{'email':row['email'],'nickname':row['nickname'],'emailVerified':bool(row['email_verified_at'])}}
 async def session(request:Request):
  t=request.cookies.get('msn_session');
  if not t:return None
- return await pool.fetchrow('select u.id,u.email,u.email_verified_at,p.nickname from auth_sessions s join users u on u.id=s.user_id join user_profiles p on p.user_id=u.id where s.token_hash=$1 and s.expires_at>now()',sha(t))
+ async with pool.acquire() as c:
+  row=await c.fetchrow("select s.id,s.keep_signed_in,u.id as user_id,u.email,u.email_verified_at,p.nickname from auth_sessions s join users u on u.id=s.user_id join user_profiles p on p.user_id=u.id where s.token_hash=$1 and s.expires_at>now() and s.created_at+interval '30 days'>now()",sha(t))
+  if not row:return None
+  await c.execute("update auth_sessions set expires_at=least(now()+($2 * interval '1 second'),created_at+interval '30 days') where id=$1",row['id'],session_idle_seconds(row['keep_signed_in']))
+  return row
 @app.post('/v1/auth/logout',status_code=204)
 async def logout(request:Request,response:Response):
  t=request.cookies.get('msn_session');

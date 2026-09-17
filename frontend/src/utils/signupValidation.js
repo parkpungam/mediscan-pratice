@@ -21,3 +21,4 @@ export function getNicknameError(value) {
   if (!HANGUL_PATTERN.test(value) && (length < 4 || length > 14)) return '영어·숫자 닉네임은 4~14자로 입력해 주세요.'
   return ''
 }
+export function getPasswordChecklist(value) { return [{ label: '8~64자', passed: value.length >= 8 && value.length <= 64 }, { label: '영문 포함', passed: /[A-Za-z]/.test(value) }, { label: '숫자 포함', passed: /\d/.test(value) }, { label: '특수문자 포함', passed: ALLOWED_PASSWORD_SYMBOL.test(value) }, { label: '공백 없음', passed: !/\s/.test(value) }] }

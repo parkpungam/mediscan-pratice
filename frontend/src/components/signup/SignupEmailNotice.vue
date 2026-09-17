@@ -6,7 +6,7 @@
     <p class="notice-lead">회원가입 정보 입력이 완료되었습니다</p>
     <p class="email-address">{{ email }}</p>
     <p class="notice-copy">이메일 인증 후 모든 학습 기능을 이용할 수 있습니다.</p>
-    <button class="primary-button" type="button" :disabled="resendState === 'loading'" @click="$emit('resend')">{{ resendState === 'loading' ? '재발송 확인 중…' : '인증메일 다시 보내기' }}</button>
+    <button class="primary-button" type="button" :disabled="resendState === 'loading' || cooldownSeconds > 0" @click="$emit('resend')">{{ resendState === 'loading' ? '재발송 확인 중…' : cooldownSeconds > 0 ? cooldownSeconds + '초 후 재발송 가능' : '인증메일 다시 보내기' }}</button>
     <button v-if="developmentToken && verificationState !== 'verified'" class="secondary-button full-width" type="button" :disabled="verificationState === 'loading'" @click="$emit('verify')">{{ verificationState === 'loading' ? '인증 처리 중…' : '개발용 이메일 인증 완료' }}</button>
     <button class="secondary-button full-width" type="button" @click="$emit('change-email')">이메일 주소 변경</button>
     <button class="text-button" type="button" @click="$emit('login')">로그인으로 이동</button>
@@ -28,6 +28,7 @@ export default {
   props: {
     email: { type: String, required: true },
     resendState: { type: String, default: 'idle' },
+    cooldownSeconds: { type: Number, default: 0 },
     developmentToken: { type: String, default: '' },
     verificationState: { type: String, default: 'idle' },
     loginNotice: { type: String, default: '' }

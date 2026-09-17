@@ -1,6 +1,6 @@
 <template>
   <main class="signup-page">
-    <header class="site-header"><BrandLogo /></header>
+    <header class="site-header"><button class="brand-home" type="button" aria-label="로그인 화면으로 이동" @click="$router.push('/login')"><BrandLogo /></button><div class="auth-theme-switch" role="group" aria-label="화면 테마"><button type="button" :class="{ active: theme === 'light' }" @click="changeTheme('light')">라이트</button><button type="button" :class="{ active: theme === 'dark' }" @click="changeTheme('dark')">다크</button></div></header>
     <div class="background-grid" aria-hidden="true"></div><div class="orb orb--left" aria-hidden="true"></div><div class="orb orb--right" aria-hidden="true"></div>
     <aside class="side-copy side-copy--left" aria-hidden="true"><span></span><p>더 나은<br />의료의 내일을 위한<br />학습의 시작</p><small>LEARNING CONNECTS<br />A HEALTHIER TOMORROW</small></aside>
     <aside class="side-copy side-copy--right" aria-hidden="true"><span></span><p>지식이 만드는<br />더 건강한 세상</p></aside>
@@ -9,7 +9,7 @@
       <div class="signup-card">
         <SignupAccountStep v-if="currentStep === 1" :form="form" :email-check-state="emailCheckState" :login-notice="loginNotice" @update-field="updateField" @next="checkEmailAndContinue" @login="showLoginNotice" />
         <SignupProfileStep v-else-if="currentStep === 2" :form="form" :nickname-check-state="nicknameCheckState" :signup-state="signupState" :signup-error-message="signupErrorMessage" @update-field="updateField" @check-nickname="checkNickname" @previous="goToAccountStep" @signup="submitSignup" />
-        <SignupEmailNotice v-else :email="form.email" :resend-state="resendState" :development-token="developmentToken" :verification-state="verificationState" :login-notice="loginNotice" @resend="resendEmail" @verify="verifyDevelopmentEmail" @change-email="changeEmail" @login="showLoginNotice" />
+        <SignupEmailNotice v-else :email="form.email" :resend-state="resendState" :cooldown-seconds="cooldownSeconds" :development-token="developmentToken" :verification-state="verificationState" :login-notice="loginNotice" @resend="resendEmail" @verify="verifyDevelopmentEmail" @change-email="changeEmail" @login="showLoginNotice" />
       </div>
       <section class="demo-guide" aria-label="가입 안내"><strong>가입 안내</strong><span>입력한 정보는 실제 서버에서 중복 확인 후 저장됩니다.</span></section>
     </section>
@@ -22,18 +22,20 @@ import SignupAccountStep from '../components/signup/SignupAccountStep.vue'
 import SignupProfileStep from '../components/signup/SignupProfileStep.vue'
 import SignupEmailNotice from '../components/signup/SignupEmailNotice.vue'
 import { request } from '../services/api'
+import { applyTheme, getTheme } from '../utils/theme'
 
 export default {
   name: 'SignupView',
   components: { BrandLogo, SignupAccountStep, SignupProfileStep, SignupEmailNotice },
   data() {
     return {
-      currentStep: 1, emailCheckState: 'idle', nicknameCheckState: 'idle', signupState: 'idle', signupErrorMessage: '',
-      resendState: 'idle', verificationState: 'idle', developmentToken: '', loginNotice: '',
+      theme: getTheme(), currentStep: 1, emailCheckState: 'idle', nicknameCheckState: 'idle', signupState: 'idle', signupErrorMessage: '',
+      resendState: 'idle', cooldownSeconds: 0, cooldownTimer: null, verificationState: 'idle', developmentToken: '', loginNotice: '',
       form: { email: '', password: '', passwordConfirm: '', termsAccepted: false, privacyAccepted: false, ageConfirmed: false, marketingAccepted: false, nickname: '', major: '', majorOther: '', signupSource: '', signupSourceOther: '' }
     }
   },
   methods: {
+    changeTheme(theme) { this.theme = applyTheme(theme) },
     updateField(field, value) {
       this.form[field] = value
       if (field === 'email') this.emailCheckState = 'idle'
@@ -62,7 +64,7 @@ export default {
       try {
         const result = await request('/v1/auth/register', { method: 'POST', body: JSON.stringify(this.form) })
         this.developmentToken = result.developmentToken || ''
-        this.verificationState = 'idle'; this.signupState = 'success'; this.currentStep = 3
+        this.verificationState = 'idle'; this.signupState = 'success'; this.currentStep = 3; this.startCooldown()
       } catch (error) {
         this.signupState = 'error'
         if (error.code === 'EMAIL_TAKEN') this.signupErrorMessage = '이미 가입된 이메일입니다. 이메일 주소를 변경해 주세요.'
@@ -75,9 +77,10 @@ export default {
       this.resendState = 'loading'
       try {
         const result = await request('/v1/auth/resend-verification', { method: 'POST', body: JSON.stringify({ email: this.form.email }) })
-        this.developmentToken = result.developmentToken || ''; this.resendState = 'sent'
-      } catch (error) { this.resendState = 'error' }
+        this.developmentToken = result.developmentToken || ''; this.resendState = 'sent'; this.startCooldown()
+      } catch (error) { this.resendState = 'error'; if (error.code === 'RESEND_COOLDOWN') this.startCooldown(error.retryAfter || 300) }
     },
+    startCooldown(seconds = 300) { clearInterval(this.cooldownTimer); this.cooldownSeconds = seconds; this.cooldownTimer = setInterval(() => { if (this.cooldownSeconds <= 1) { clearInterval(this.cooldownTimer); this.cooldownTimer = null; this.cooldownSeconds = 0 } else this.cooldownSeconds -= 1 }, 1000) },
     async verifyDevelopmentEmail() {
       if (!this.developmentToken) return
       this.verificationState = 'loading'

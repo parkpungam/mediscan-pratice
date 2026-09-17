@@ -4,7 +4,7 @@ import uuid
 import httpx
 
 from app import main
-from app.main import password_ok
+from app.main import password_ok, session_expiry
 
 
 def test_password_policy():
@@ -13,6 +13,12 @@ def test_password_policy():
     assert not password_ok('abcd1234가')
     assert not password_ok('Ab1! xyz0')
 
+
+def test_session_expiry_policy():
+    from datetime import datetime, timedelta, timezone
+    created_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    assert session_expiry(created_at + timedelta(hours=1), created_at, False) == created_at + timedelta(hours=4)
+    assert session_expiry(created_at + timedelta(days=29), created_at, True) == created_at + timedelta(days=30)
 
 def test_development_shortcuts_require_both_flags():
     assert main.dev_shortcuts_enabled('development', 'true')
@@ -66,6 +72,7 @@ async def _exercise_auth_http_contract():
     original_env, original_dev = main.ENV, main.DEV
     main.attempts.clear()
     await main.startup()
+    await main.pool.execute('ALTER TABLE auth_sessions ADD COLUMN IF NOT EXISTS keep_signed_in BOOLEAN NOT NULL DEFAULT FALSE')
     transport = httpx.ASGITransport(app=main.app, client=('127.0.0.1', 43123))
     try:
         async with httpx.AsyncClient(transport=transport, base_url='http://testserver') as client:
@@ -97,6 +104,8 @@ async def _exercise_auth_http_contract():
                 user_email,
             )
             assert profile['major'] == '방사선학과'
+            response = await client.post('/v1/auth/resend-verification', json={'email': user_email})
+            assert response.status_code == 429 and response.headers['Retry-After']
 
             duplicate_email, duplicate_nickname = identity('duplicate-email')
             response = await client.post('/v1/auth/register', json=_registration(duplicate_email, duplicate_nickname))
@@ -121,6 +130,22 @@ async def _exercise_auth_http_contract():
             assert response.status_code == 200
             assert (await client.get('/v1/users/me')).status_code == 200
             assert (await client.post('/v1/auth/logout')).status_code == 204
+            assert (await client.get('/v1/users/me')).status_code == 401
+
+            response = await client.post('/v1/auth/login', json={'email': user_email, 'password': 'Ab1!valid', 'keepSignedIn': True})
+            assert response.status_code == 200 and 'Max-Age=2592000' in response.headers['set-cookie']
+            token_hash = main.sha(client.cookies.get('msn_session'))
+            await main.pool.execute("update auth_sessions set created_at=now()-interval '29 days' where token_hash=$1", token_hash)
+            assert (await client.get('/v1/users/me')).status_code == 200
+            session_row = await main.pool.fetchrow('select expires_at, created_at from auth_sessions where token_hash=$1', token_hash)
+            assert session_row['expires_at'] <= session_row['created_at'] + __import__('datetime').timedelta(days=30)
+            await main.pool.execute("update auth_sessions set created_at=now()-interval '31 days' where token_hash=$1", token_hash)
+            assert (await client.get('/v1/users/me')).status_code == 401
+
+            response = await client.post('/v1/auth/login', json={'email': user_email, 'password': 'Ab1!valid', 'keepSignedIn': False})
+            assert response.status_code == 200 and 'Max-Age=10800' in response.headers['set-cookie']
+            token_hash = main.sha(client.cookies.get('msn_session'))
+            await main.pool.execute("update auth_sessions set created_at=now()-interval '4 hours', expires_at=now()-interval '1 hour' where token_hash=$1", token_hash)
             assert (await client.get('/v1/users/me')).status_code == 401
 
             main.attempts.clear()
