@@ -1,0 +1,70 @@
+<template>
+  <main class="dashboard-page">
+    <aside class="dashboard-sidebar">
+      <BrandLogo />
+      <nav class="side-nav" aria-label="메인 메뉴">
+        <button class="side-nav__item is-active" type="button" @click="notice = ''"><span class="nav-icon home-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" /></svg></span><span>홈</span></button>
+        <button v-for="menu in menus" :key="menu.title" class="side-nav__item" type="button" @click="openMenu(menu.title)"><span class="nav-icon">{{ menu.index }}</span><span>{{ menu.title }}</span></button>
+      </nav>
+    </aside>
+    <section class="dashboard-content" :aria-busy="loading">
+      <header class="dashboard-header">
+        <div><p class="eyebrow">MEDICAL IMAGING LEARNING</p><p class="header-date">나만의 학습 공간</p></div>
+        <div v-if="user.nickname" class="dashboard-actions">
+          <div class="auth-theme-switch dashboard-theme-switch" role="group" aria-label="화면 테마"><button type="button" :class="{ active: theme === 'light' }" @click="changeTheme('light')">라이트</button><button type="button" :class="{ active: theme === 'dark' }" @click="changeTheme('dark')">다크</button></div>
+          <div class="profile-area" ref="profileArea">
+            <button class="profile-chip" type="button" :aria-expanded="profileOpen" @click.stop="profileOpen = !profileOpen"><span class="profile-dot"></span><span class="profile-name" :title="user.nickname">{{ user.nickname }}님</span><svg class="profile-caret" viewBox="0 0 16 16" aria-hidden="true"><path d="m3 6 5 5 5-5" /></svg></button>
+            <section v-if="profileOpen" class="profile-popover" aria-label="계정 메뉴">
+              <div class="account-identity"><p>내 계정</p><strong :title="user.nickname">{{ user.nickname }}님</strong><span>{{ user.email }}</span></div>
+              <div class="account-status" :class="{ verified: user.emailVerified }">{{ user.emailVerified ? '이메일 인증 완료' : '이메일 인증 필요' }}</div>
+              <div class="profile-actions"><button type="button" @click="openProfileInfo">내 정보</button><button class="profile-logout" type="button" :disabled="logoutLoading" @click="logout">{{ logoutLoading ? '로그아웃 중…' : '로그아웃' }}</button></div>
+            </section>
+          </div>
+        </div>
+      </header>
+      <div v-if="loading" class="loading-state" aria-live="polite">로그인 정보를 확인하고 있습니다…</div>
+      <template v-else>
+        <section class="welcome-panel">
+          <div class="welcome-copy"><p>WELCOME BACK</p><h1><strong>{{ user.nickname || '학습자' }}</strong>님,<br />오늘도 차분하게 시작해 볼까요?</h1><span>학습할 메뉴를 선택하면 다음 단계로 안내해 드립니다.</span></div>
+          <div class="welcome-visual" aria-hidden="true"><span></span><span></span><i></i></div>
+        </section>
+        <section v-if="!user.emailVerified" class="verification-banner" aria-live="polite">
+          <div><strong>이메일 인증이 필요합니다</strong><p>이메일 인증 후 모든 학습 기능을 이용할 수 있습니다.</p></div>
+          <div class="banner-actions"><button type="button" :disabled="resendLoading" @click="resendVerification">{{ resendLoading ? '재발송 중…' : '인증 메일 재발송' }}</button><button type="button" @click="showEmailChangeUnavailable">이메일 변경</button></div>
+        </section>
+        <p v-if="notice" class="main-notice" aria-live="polite">{{ notice }}</p>
+        <section class="section-heading"><div><p>LEARNING MENU</p><h2>무엇을 도와드릴까요?</h2></div><span>준비 중인 메뉴는 클릭해 안내를 확인할 수 있습니다.</span></section>
+        <section class="menu-grid" aria-label="학습 메뉴">
+          <button v-for="menu in menus" :key="menu.title" class="menu-card" type="button" @click="openMenu(menu.title)"><span class="menu-index">{{ menu.index }}</span><strong>{{ menu.title }}</strong><span>{{ menu.description }}</span><i aria-hidden="true">→</i></button>
+        </section>
+      </template>
+    </section>
+  </main>
+</template>
+<script>
+import BrandLogo from '../components/common/BrandLogo.vue'
+import { request } from '../services/api'
+import { applyTheme, getTheme } from '../utils/theme'
+export default {
+  name: 'MainView', components: { BrandLogo },
+  data() { return { loading: true, logoutLoading: false, resendLoading: false, profileOpen: false, theme: getTheme(), notice: '', user: {}, menus: [{ index: '01', title: '학습 시작', description: 'ROI 판독 훈련을 시작합니다' }, { index: '02', title: '오답노트', description: '나의 오답을 다시 학습합니다' }, { index: '03', title: 'AI 영상 분석', description: '영상 분석 정보를 확인합니다' }] } },
+  async created() { try { this.user = await request('/v1/users/me') } catch (error) { return } finally { this.loading = false } },
+  mounted() { document.addEventListener('click', this.closeProfileOnOutsideClick) },
+  beforeUnmount() { document.removeEventListener('click', this.closeProfileOnOutsideClick) },
+  methods: {
+    closeProfileOnOutsideClick(event) { if (this.profileOpen && this.$refs.profileArea && !this.$refs.profileArea.contains(event.target)) this.profileOpen = false },
+    openMenu(title) { this.profileOpen = false; this.notice = this.user.emailVerified ? `${title} 기능은 아직 준비 중입니다.` : '이메일 인증 후 모든 학습 기능을 이용할 수 있습니다.' },
+    openProfileInfo() { this.profileOpen = false; this.notice = '마이페이지는 아직 준비 중입니다.' },
+    showEmailChangeUnavailable() { this.notice = '이메일 변경 기능은 아직 준비 중입니다.' },
+    changeTheme(theme) { this.theme = applyTheme(theme) },
+    async resendVerification() { this.resendLoading = true; try { await request('/v1/auth/resend-verification', { method: 'POST', body: JSON.stringify({ email: this.user.email }) }); this.notice = '인증 메일 재발송 요청을 처리했습니다.' } catch (error) { this.notice = '인증 메일을 다시 보내지 못했습니다. 잠시 후 다시 시도해 주세요.' } finally { this.resendLoading = false } },
+    async logout() { this.logoutLoading = true; try { await request('/v1/auth/logout', { method: 'POST' }) } finally { this.logoutLoading = false; this.profileOpen = false; this.$router.replace('/login') } }
+  }
+}
+</script>
+<style scoped>
+.dashboard-page { display:grid; min-height:100vh; grid-template-columns:254px minmax(0,1fr); background:radial-gradient(circle at 70% 12%,rgba(12,89,92,.2),transparent 31%),#020a0e; color:#f5f7f8; }.dashboard-sidebar { position:sticky; top:0; display:flex; min-height:100vh; flex-direction:column; padding:30px 18px 20px; border-right:1px solid rgba(115,166,174,.22); background:rgba(3,15,20,.8); backdrop-filter:blur(16px); }.side-nav { display:grid; gap:7px; margin-top:54px; }.side-nav__item { display:flex; align-items:center; gap:13px; width:100%; padding:13px 14px; border:1px solid transparent; border-radius:10px; background:transparent; color:#9fb2b9; text-align:left; transition:background 160ms ease,color 160ms ease,border-color 160ms ease; }.side-nav__item:hover { color:#e8f6f6; background:rgba(26,82,86,.2); }.side-nav__item.is-active { border-color:rgba(25,228,210,.35); background:linear-gradient(90deg,rgba(25,228,210,.18),rgba(25,228,210,.03)); box-shadow:inset 3px 0 var(--accent); color:#efffff; }.nav-icon { display:inline-grid; width:24px; height:24px; flex:0 0 24px; place-items:center; border:1px solid rgba(148,197,202,.3); border-radius:7px; color:var(--accent); font-size:11px; font-weight:800; }.home-icon svg { width:17px; height:17px; fill:none; stroke:var(--accent); stroke-linecap:round; stroke-linejoin:round; stroke-width:1.8; }
+.dashboard-content { width:min(100%,1280px); margin:0 auto; padding:30px clamp(24px,4vw,66px) 54px; }.dashboard-actions { display:flex; align-items:center; gap:10px; }.dashboard-theme-switch { margin-left:0; }.dashboard-header { display:flex; align-items:center; justify-content:space-between; padding-bottom:27px; border-bottom:1px solid rgba(118,164,171,.19); }.eyebrow { margin:0 0 6px; color:var(--accent); font-size:11px; font-weight:800; letter-spacing:.15em; }.header-date { margin:0; color:#879ca4; font-size:13px; }.profile-area { position:relative; }.profile-chip { display:inline-flex; align-items:center; gap:8px; max-width:min(42vw,218px); padding:7px 10px; border:1px solid rgba(137,182,189,.26); border-radius:999px; background:rgba(3,15,20,.36); color:#dcebed; font-size:12px; }.profile-chip:hover { border-color:var(--accent); }.profile-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.profile-caret { width:14px; height:14px; flex:0 0 14px; fill:none; stroke:var(--accent); stroke-linecap:round; stroke-linejoin:round; stroke-width:1.8; }.profile-dot { width:8px; height:8px; flex:0 0 8px; border-radius:50%; background:var(--accent); box-shadow:0 0 12px var(--accent); }.profile-popover { position:absolute; z-index:4; top:calc(100% + 10px); right:0; display:grid; width:min(280px,calc(100vw - 40px)); gap:12px; padding:17px; border:1px solid rgba(125,186,189,.35); border-radius:13px; background:#07181d; box-shadow:0 18px 38px rgba(0,0,0,.38); text-align:left; }.account-identity { display:grid; gap:4px; }.account-identity p { margin:0; color:var(--accent); font-size:11px; font-weight:800; letter-spacing:.1em; }.account-identity strong,.account-identity span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.account-identity strong { font-size:14px; line-height:1.3; }.account-identity span { color:var(--muted); font-size:12px; }.account-status { padding:8px 10px; border-radius:8px; background:rgba(149,99,25,.25); color:#f5d69a; font-size:12px; }.account-status.verified { background:rgba(25,228,210,.12); color:var(--accent); }.profile-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }.profile-popover button { padding:9px 10px; border:1px solid rgba(137,182,189,.25); border-radius:8px; background:rgba(9,31,37,.8); color:#e7f3f4; font-size:13px; line-height:1.2; text-align:center; }.profile-popover button:hover { border-color:var(--accent); }.profile-popover .profile-logout { color:#ffb0b0; }
+.loading-state { padding:90px 0; color:var(--muted); text-align:center; }.welcome-panel { display:flex; align-items:center; justify-content:space-between; min-height:245px; margin-top:30px; padding:35px 42px; overflow:hidden; border:1px solid rgba(125,186,189,.28); border-radius:20px; background:linear-gradient(115deg,rgba(12,43,49,.92),rgba(5,20,25,.92)); }.welcome-copy { position:relative; z-index:1; }.welcome-copy>p,.section-heading p { margin:0 0 8px; color:var(--accent); font-size:11px; font-weight:800; letter-spacing:.14em; }.welcome-copy h1 { margin:0 0 13px; font-size:clamp(26px,3.1vw,42px); line-height:1.25; letter-spacing:-.055em; }.welcome-copy h1 strong { color:var(--accent); }.welcome-copy>span { color:#b9cbcf; font-size:14px; }.welcome-visual { position:relative; width:212px; height:212px; margin-right:22px; border:1px solid rgba(25,228,210,.42); border-radius:50%; background:radial-gradient(circle,rgba(25,228,210,.2),rgba(25,228,210,.02) 56%,transparent 57%); box-shadow:0 0 48px rgba(25,228,210,.12),inset 0 0 36px rgba(25,228,210,.08); }.welcome-visual span { position:absolute; border:1px solid rgba(25,228,210,.42); border-radius:50%; }.welcome-visual span:first-child { inset:27px; }.welcome-visual span:nth-child(2) { inset:63px; }.welcome-visual i { position:absolute; top:50%; left:50%; width:40px; height:40px; transform:translate(-50%,-50%); border:2px solid var(--accent); border-radius:9px; box-shadow:0 0 20px rgba(25,228,210,.5); }.verification-banner { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-top:22px; padding:17px 20px; border:1px solid rgba(255,202,116,.48); border-radius:14px; background:rgba(82,55,21,.42); }.verification-banner strong { color:#ffe0a1; }.verification-banner p { margin:5px 0 0; color:#d9c5a1; font-size:14px; }.banner-actions { display:flex; flex-wrap:wrap; gap:8px; }.banner-actions button { padding:9px 12px; border:1px solid rgba(178,207,212,.42); border-radius:8px; background:rgba(3,16,21,.68); color:#e8f3f4; font-size:13px; }.banner-actions button:hover { border-color:var(--accent); }.main-notice { margin:19px 0 0; padding:12px 14px; border:1px solid rgba(25,228,210,.26); border-radius:10px; background:rgba(13,61,64,.25); color:#d5eeee; font-size:14px; }.section-heading { display:flex; align-items:end; justify-content:space-between; gap:20px; margin:40px 0 17px; }.section-heading h2 { margin:0; font-size:24px; letter-spacing:-.045em; }.section-heading>span { color:#82989f; font-size:13px; }.menu-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }.menu-card { position:relative; display:flex; min-height:205px; flex-direction:column; align-items:flex-start; padding:24px; overflow:hidden; border:1px solid rgba(125,179,185,.3); border-radius:16px; background:linear-gradient(145deg,rgba(12,32,39,.93),rgba(5,17,22,.94)); color:#f4f7f8; text-align:left; transition:transform 160ms ease,border-color 160ms ease,box-shadow 160ms ease; }.menu-card:hover { transform:translateY(-4px); border-color:var(--accent); box-shadow:0 18px 35px rgba(0,0,0,.28); }.menu-index { margin-bottom:auto; color:var(--accent); font-size:12px; font-weight:800; letter-spacing:.12em; }.menu-card strong { margin-bottom:8px; font-size:21px; letter-spacing:-.04em; }.menu-card>span:not(.menu-index) { color:var(--muted); font-size:14px; line-height:1.45; }.menu-card i { position:absolute; right:23px; bottom:20px; color:var(--accent); font-size:23px; font-style:normal; }
+@media (max-width:820px) { .dashboard-page { display:block; }.dashboard-sidebar { position:static; min-height:auto; padding:18px 20px; border-right:0; border-bottom:1px solid rgba(115,166,174,.22); }.side-nav { display:flex; margin-top:20px; overflow-x:auto; }.side-nav__item { flex:0 0 auto; }.dashboard-content { padding:25px 20px 44px; }.welcome-panel { padding:30px; }.menu-grid { grid-template-columns:1fr; }.menu-card { min-height:155px; } }@media (max-width:560px) { .welcome-panel { min-height:0; }.welcome-visual { display:none; }.verification-banner,.section-heading { align-items:flex-start; flex-direction:column; }.dashboard-header { align-items:flex-start; }.profile-chip { max-width:55vw; } }
+</style>

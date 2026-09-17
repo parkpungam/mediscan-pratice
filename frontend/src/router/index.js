@@ -17,6 +17,11 @@ const routes = [
     name: 'login',
     component: LoginView, meta: { title: '로그인' }
   },
+  {
+    path: '/main',
+    name: 'main',
+    component: MainView, meta: { title: '메인' }
+  }
 ]
 
 const router = createRouter({
