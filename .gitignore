@@ -18,3 +18,8 @@ npm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+# Python caches and virtual environments
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
