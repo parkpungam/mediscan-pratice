@@ -117,7 +117,7 @@
 
     <p class="login-copy">이미 계정이 있으신가요? <button type="button" @click="$emit('login')">로그인</button></p>
     <p v-if="loginNotice" class="demo-result" aria-live="polite">{{ loginNotice }}</p>
-    <p class="demo-hint">화면 시연용 · 실제 중복 조회나 정보 저장은 하지 않습니다.</p>
+    <p class="demo-hint">입력한 이메일은 실제 서버에서 중복 여부를 확인합니다.</p>
   </form>
 </template>
 
