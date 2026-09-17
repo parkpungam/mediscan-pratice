@@ -1,15 +1,17 @@
 # 메디스캔노트 프로젝트 작업 규칙
 
-이 파일은 저장소 전체에 적용되는 현재 작업 규칙이다. 상세 기획과 설계는 복사하지 않고 [문서 안내](./docs/README.md)에 연결한다.
+이 파일은 저장소 전체에 적용되는 현재 작업 규칙이다. 상세 기획과 설계는 복사하지 않고 문서 안내(`C:\Users\user\Desktop\setting\medinote\README.md`)에 연결한다.
+
+> **문서 위치 변경(2026-09-15):** 제품·시스템·AI·프로젝트 관리·테스트 문서는 더 이상 이 저장소의 `docs/`에 있지 않다. Claude·Codex 공통 협업 저장소인 `C:\Users\user\Desktop\setting\medinote\`로 이동했으며 내부 폴더 구조와 문서 간 상대 링크는 그대로다. `references/`와 `frontend/`는 이 저장소에 그대로 있다.
 
 ## 1. 작업 전 확인 순서
 
-1. 제품 범위는 [PRD](./docs/product/PRD.md)를 확인한다.
-2. 화면 이동은 [USER_FLOW](./docs/product/USER_FLOW.md)를 확인한다.
-3. 회원가입 상세는 [SIGN_UP](./docs/product/features/SIGN_UP.md)을 확인한다.
-4. 기술 경계는 [ARCHITECTURE](./docs/system/ARCHITECTURE.md)를 확인한다.
-5. 확정·미확정·충돌 상태는 [DECISIONS](./docs/project/DECISIONS.md)를 확인한다.
-6. 구현 순서와 완료 조건은 [IMPLEMENTATION_PLAN](./docs/project/IMPLEMENTATION_PLAN.md)을 따른다.
+1. 제품 범위는 PRD(`C:\Users\user\Desktop\setting\medinote\product\PRD.md`)를 확인한다.
+2. 화면 이동은 USER_FLOW(`C:\Users\user\Desktop\setting\medinote\product\USER_FLOW.md`)를 확인한다.
+3. 회원가입 상세는 SIGN_UP(`C:\Users\user\Desktop\setting\medinote\product\features\SIGN_UP.md`)을 확인한다.
+4. 기술 경계는 ARCHITECTURE(`C:\Users\user\Desktop\setting\medinote\system\ARCHITECTURE.md`)를 확인한다.
+5. 확정·미확정·충돌 상태는 DECISIONS(`C:\Users\user\Desktop\setting\medinote\project\DECISIONS.md`)를 확인한다.
+6. 구현 순서와 완료 조건은 IMPLEMENTATION_PLAN(`C:\Users\user\Desktop\setting\medinote\project\IMPLEMENTATION_PLAN.md`)을 따른다.
 
 ## 2. 문서 및 결정 규칙
 
@@ -20,7 +22,7 @@
 - 같은 상세 내용을 여러 문서에 반복하지 않고 담당 기준 문서로 연결한다.
 - 사용자의 명시적인 승인 전에는 새 기능 범위나 기술을 추가하지 않는다.
 
-## 3. 확정된 프론트엔드 기술
+## 3. 확정된 기술 경계
 
 - Vue 3
 - JavaScript
@@ -30,7 +32,11 @@
 - 기본 CSS
 - npm
 
-프론트엔드는 루트의 `frontend/`에 둔다. 팀장 저장소는 기술 사용 방식을 이해하기 위한 참고자료이며 코드를 복사하거나 해당 저장소에 직접 작업하지 않는다. 백엔드, 데이터베이스, 스토리지, AI 기술은 아직 확정하지 않는다.
+프론트엔드는 루트의 `frontend/`에 둔다. 팀장 저장소는 기술 사용 방식을 이해하기 위한 참고자료이며 코드를 복사하거나 해당 저장소에 직접 작업하지 않는다.
+
+- 백엔드 런타임은 Node.js이며 루트의 `backend/`에 둔다.
+- 관계형 데이터베이스는 PostgreSQL이다.
+- 백엔드 프레임워크·ORM, 호스팅·스토리지, AI 모델·프레임워크는 아직 확정하지 않는다.
 
 ## 4. 현재 구현 범위
 
@@ -53,4 +59,4 @@
 - 기존 사용자 변경과 원본 자료를 보존한다.
 - 기능을 구현하면 관련 테스트와 빌드를 실행하고 결과를 보고한다.
 - 패키지 설치, 애플리케이션 생성과 기능 구현은 사용자가 승인한 단계 안에서만 수행한다.
-- 현재 단계에서는 문서만 갱신하며, 별도 승인 전에는 `frontend/` 생성이나 패키지 설치를 하지 않는다.
+- 패키지 설치, 애플리케이션 생성과 기능 구현은 사용자의 명시적 착수 승인 후에만 수행한다.
