@@ -10,18 +10,20 @@ const routes = [
   {
     path: '/signup',
     name: 'signup',
-    component: SignupView
+    component: SignupView, meta: { title: '회원가입' }
   },
   {
     path: '/login',
     name: 'login',
-    component: LoginView
-  }
+    component: LoginView, meta: { title: '로그인' }
+  },
 ]
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes
 })
+
+router.afterEach((to) => { document.title = (to.meta.title || '메디스캔노트') + ' - 메디스캔노트' })
 
 export default router

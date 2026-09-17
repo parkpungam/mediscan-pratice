@@ -13,7 +13,7 @@
   display: inline-flex;
   align-items: center;
   gap: 13px;
-  color: #f6f8fb;
+  color: var(--brand-text, #f6f8fb);
   font-size: 20px;
   font-weight: 800;
   letter-spacing: -0.04em;
